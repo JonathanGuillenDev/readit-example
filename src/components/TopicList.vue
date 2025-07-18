@@ -12,8 +12,7 @@
         <tr v-for="topic in topics" :key="topic.id">
           <td width="80%">
             <router-link
-              :to="{ name: 'Messages', params: { id: topic.id } }"
-              @click.native="selectTopic(topic)"
+              :to="{ name: 'Messages', params: { topicId: topic.id } }" @click.native="selectTopic(topic)"
             >
               {{ topic.title }}
             </router-link>
@@ -44,10 +43,6 @@ export default {
   methods: {
     // Map the actions you've defined in your store
     ...mapActions(['selectTopic', 'deleteTopic']), // Assuming you'll create a deleteTopic action in store
-
-    // Removed getTopics() because data is initialized directly in store
-    // You might want an action to set an initial active topic when the app loads
-    // if you don't already handle this via router or in App.vue.
 
     confirmAndDeleteTopic(id) {
       if (confirm("Are you sure you want to delete this topic and all its messages?")) {

@@ -1,22 +1,26 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 
-// Import your readit.json file directly
-// Adjust the path below based on where you actually place your readit.json file
+// Import your readit.json file directly.
+// Adjust the path if your file location changes.
 import initialData from '@/data/readit.json';
 
 Vue.use(Vuex)
 
 export default new Vuex.Store({
   state: {
-    // Initialize topics with the data from readit.json
-    topics: initialData.topics || [],
-    allMessages: initialData.messages || [],
+    // Application's initial data loaded from readit.json
+    topics: initialData.topics || [], // All available topics
+    allMessages: initialData.messages || [], // All messages across all topics
+
+    // Currently selected topic and its associated messages
     activeTopic: {
       id: 0,
       title: '',
-      messages: []
+      messages: [] // Populated dynamically based on active topic
     },
+
+    // Not directly used for messages display, but could be for single message editing
     activeMessage: {
       id: null,
       topicId: null,
@@ -24,74 +28,132 @@ export default new Vuex.Store({
       messageText: ''
     }
   },
+
   mutations: {
+    // --- Topic Mutations ---
     SET_TOPICS(state, data) {
       state.topics = data;
     },
     SET_ACTIVE_TOPIC(state, topic) {
+      // Filter all messages to get only those belonging to the selected topic
       const messagesForThisTopic = state.allMessages.filter(
         message => message.topicId === topic.id
       );
 
-      // Set the active topic and its associated messages
+      // Update the active topic state with its details and filtered messages
       state.activeTopic = {
         id: topic.id,
         title: topic.title,
         messages: messagesForThisTopic
       };
     },
-    DELETE_MESSAGE(state, id) {
-      // First, remove the message from the global list of all messages
-     state.allMessages = state.allMessages.filter(message => message.id !== id);
-
-      // Then, update the messages within the currently active topic
-      // (This ensures consistency if the deleted message was part of the active topic)
-      if (state.activeTopic && state.activeTopic.messages) {
-        state.activeTopic.messages = state.activeTopic.messages.filter(message => message.id !== id);
+    ADD_TOPIC(state, newTopic) {
+      state.topics.push(newTopic);
+    },
+    UPDATE_TOPIC(state, updatedTopic) {
+      const index = state.topics.findIndex(t => t.id === updatedTopic.id);
+      if (index !== -1) {
+        state.topics.splice(index, 1, updatedTopic); // Replace the topic object
       }
     },
-    // IMPORTANT: SET_ACTIVE_MESSAGE usually sets a specific message for editing/viewing.
-    // If you intend for this mutation to *add* a new message, you should rename it to something like ADD_MESSAGE.
-    // I've renamed it below to ADD_MESSAGE based on its current implementation.
-    ADD_MESSAGE(state, newMessage) { // Renamed from SET_ACTIVE_MESSAGE to clarify intent
-      // Add the new message to the global list
-      state.allMessages.push(newMessage);
-      // If the new message belongs to the current active topic, also add it there
+    DELETE_TOPIC(state, id) {
+      state.topics = state.topics.filter(topic => topic.id !== id);
+      state.allMessages = state.allMessages.filter(message => message.topicId !== id); // Remove associated messages
+
+      // Clear active topic if it was the one deleted
+      if (state.activeTopic.id === id) {
+        state.activeTopic = { id: 0, title: '', messages: [] };
+      }
+    },
+
+    // --- Message Mutations ---
+    ADD_MESSAGE(state, newMessage) {
+      state.allMessages.push(newMessage); // Add to global list
+      // If the new message belongs to the current active topic, also add it there for immediate display
       if (state.activeTopic.id === newMessage.topicId) {
         state.activeTopic.messages.push(newMessage);
       }
     },
-    // *** NEW: DELETE_TOPIC mutation ***
-    DELETE_TOPIC(state, id) {
-      // Remove the topic from the topics array
-      state.topics = state.topics.filter(topic => topic.id !== id);
-
-      // Also remove all messages associated with this topic from the global allMessages array
-      state.allMessages = state.allMessages.filter(message => message.topicId !== id);
-
-      // If the deleted topic was the active one, clear activeTopic or set a new default
-      if (state.activeTopic.id === id) {
-        state.activeTopic = { id: 0, title: '', messages: [] }; // Clear active topic
+    UPDATE_MESSAGE(state, updatedMessage) {
+      // Update in global allMessages array
+      const allMessagesIndex = state.allMessages.findIndex(msg => msg.id === updatedMessage.id);
+      if (allMessagesIndex !== -1) {
+        state.allMessages.splice(allMessagesIndex, 1, updatedMessage);
       }
+
+      // Update in active topic's messages array, if applicable
+      if (state.activeTopic && state.activeTopic.id === updatedMessage.topicId) {
+        const activeTopicMessageIndex = state.activeTopic.messages.findIndex(msg => msg.id === updatedMessage.id);
+        if (activeTopicMessageIndex !== -1) {
+          state.activeTopic.messages.splice(activeTopicMessageIndex, 1, updatedMessage);
+        }
+      }
+    },
+    DELETE_MESSAGE(state, id) {
+      state.allMessages = state.allMessages.filter(message => message.id !== id); // Remove from global list
+
+      // Remove from active topic's messages if present
+      if (state.activeTopic && state.activeTopic.messages) {
+        state.activeTopic.messages = state.activeTopic.messages.filter(message => message.id !== id);
+      }
+    },
+    SET_ACTIVE_MESSAGE(state, message) {
+      // This mutation is used to set a specific message for editing/viewing (if needed)
+      state.activeMessage = message;
     }
   },
+
   actions: {
+    // --- Topic Actions ---
     selectTopic({ commit }, topic) {
       commit('SET_ACTIVE_TOPIC', topic);
     },
-    deleteMessage({ commit }, messageId) {
-      commit('DELETE_MESSAGE', messageId);
+    addTopic({ commit }, topic) {
+      // Simulate async operation and commit mutation
+      return new Promise((resolve) => {
+        commit('ADD_TOPIC', topic);
+        resolve();
+      });
     },
-    addMessage({ commit }, message) {
-      // You'll likely generate ID and topicId here or pass them in from the component
-      // For example: message.id = Date.now(); // Simple ID generation for static data
-      commit('ADD_MESSAGE', message);
+    updateTheTopic({ commit }, topic) {
+      // Simulate async operation and commit mutation
+      return new Promise((resolve) => {
+        commit('UPDATE_TOPIC', topic);
+        resolve();
+      });
     },
-    // *** NEW: deleteTopic action ***
     deleteTopic({ commit }, topicId) {
-      // For a static JSON setup, the action just commits the mutation.
-      // If you later add a backend, this is where you'd put the API call.
-      commit('DELETE_TOPIC', topicId);
+      // Simulate async operation and commit mutation
+      return new Promise((resolve) => {
+        commit('DELETE_TOPIC', topicId);
+        resolve();
+      });
+    },
+
+    // --- Message Actions ---
+    addMessage({ commit }, message) {
+      // Simulate async operation and commit mutation
+      return new Promise((resolve) => {
+        commit('ADD_MESSAGE', message);
+        resolve();
+      });
+    },
+    updateTheMessage({ commit }, message) {
+      // Simulate async operation and commit mutation
+      return new Promise((resolve) => {
+        commit('UPDATE_MESSAGE', message);
+        resolve();
+      });
+    },
+    deleteMessage({ commit }, messageId) {
+      // Simulate async operation and commit mutation
+      return new Promise((resolve) => {
+        commit('DELETE_MESSAGE', messageId);
+        resolve();
+      });
+    },
+    setActiveMessage({ commit }, message) {
+        commit('SET_ACTIVE_MESSAGE', message);
     }
   },
   modules: {

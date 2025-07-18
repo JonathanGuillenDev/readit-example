@@ -1,61 +1,103 @@
 <template>
   <div class="topic-details">
-    <h1>{{ this.$store.state.activeTopic.title }}</h1>
+    <h1>{{ activeTopic.title }}</h1>
     <router-link
-      :to="{ name: 'AddMessage', params: {topicId: $store.state.activeTopic.id} }"
+      :to="{ name: 'AddMessage', params: { topicId: activeTopic.id } }"
       class="addMessage"
     >Add New Message</router-link>
+
     <div
-      v-for="message in this.$store.state.activeTopic.messages"
+      v-for="message in activeTopic.messages"
       v-bind:key="message.id"
       class="topic-message bubble"
     >
       <h3 class="message-title">{{ message.title }}</h3>
       <p class="message-body">{{ message.messageText }}</p>
       <router-link
-        :to="{name: 'EditMessage', params: {topicId: $store.state.activeTopic.id, messageId: message.id} }"
+        :to="{ name: 'EditMessage', params: { topicId: activeTopic.id, messageId: message.id } }"
         tag="button"
         class="btnEditMessage"
       >Edit</router-link>
-      <button class="btnDeleteMessage" v-on:click="deleteMessage(message.id)">Delete</button>
+      <button class="btnDeleteMessage" @click="confirmAndDeleteMessage(message.id)">Delete</button>
+    </div>
+
+    <div v-if="!activeTopic.id">
+      <p>Loading topic or topic not found...</p>
+    </div>
+    <div v-else-if="activeTopic.messages && activeTopic.messages.length === 0">
+      <p>No messages for this topic yet. Be the first to add one!</p>
     </div>
   </div>
 </template>
 
 <script>
-import topicService from "@/services/TopicService.js";
-import messageService from "@/services/MessageService.js";
+// REMOVE THESE IMPORTS - We are no longer using external services for data
+// import topicService from "@/services/TopicService.js";
+// import messageService from "@/services/MessageService.js";
+
+import { mapState, mapActions } from 'vuex'; // Import mapState and mapActions
 
 export default {
   name: "topic-details",
   props: {
-    topicId: Number
+    // Ensure that topicId is passed as a prop from your router config
+    topicId: [Number, String] // Allow string for route params, convert if needed
+  },
+  computed: {
+    // Map state properties for direct access in template and script
+    ...mapState(['activeTopic', 'topics']) // Need 'topics' to find the topic by ID
   },
   methods: {
-    deleteMessage(id) {
-      messageService.deleteTheMessage(id).then((response) => {
-        if (response.status === 200) {
-          this.$store.commit("DELETE_MESSAGE", id);
-        }
-      });
+    // Map actions to be dispatched
+    ...mapActions(['selectTopic', 'deleteMessage']), // 'selectTopic' is crucial for initial load
+
+    confirmAndDeleteMessage(id) {
+      if (confirm("Are you sure you want to delete this message?")) {
+        // Dispatch the deleteMessage action from the store
+        this.deleteMessage(id);
+      }
     }
   },
-  created() {
-    topicService
-      .get(this.topicId)
-      .then(response => {
-        this.$store.commit("SET_ACTIVE_TOPIC", response.data);
-      })
-      .catch(error => {
-        if (error.response.status == 404) {
-          this.$router.push("/not-found");
+  // Use a watcher to react to changes in topicId from the route
+  // and also to handle the initial load.
+  watch: {
+    topicId: {
+      immediate: true, // This makes the watcher run immediately when the component is created
+      handler(newTopicId) {
+        if (newTopicId && this.topics.length > 0) { // Ensure topics are loaded before searching
+          const topicToSelect = this.topics.find(t => t.id == newTopicId); // Use == for loose comparison as route param might be string
+
+          if (topicToSelect) {
+            // Dispatch the selectTopic action, which will update activeTopic and its messages
+            this.selectTopic(topicToSelect);
+          } else {
+            console.warn(`Topic with ID ${newTopicId} not found in store.`);
+            // Optional: Redirect to a 404 page or home if topic not found
+            // this.$router.push("/not-found");
+          }
         }
-      });
+      }
+    },
+    // Add a watcher for 'topics' state as well. This handles cases where 'topics' might
+    // be populated slightly after 'topicId' is available (e.g., if initialData load is delayed, though unlikely for static JSON)
+    topics: {
+      immediate: true,
+      handler(newTopics) {
+        if (newTopics.length > 0 && this.topicId) {
+          const topicToSelect = newTopics.find(t => t.id == this.topicId);
+          // Only select if it's a different topic than currently active to avoid unnecessary re-renders
+          if (topicToSelect && this.activeTopic.id !== topicToSelect.id) {
+             this.selectTopic(topicToSelect);
+          }
+        }
+      }
+    }
   }
 };
 </script>
 
 <style>
+/* Your existing styles (no changes needed here) */
 /** page structure **/
 .topic-details {
   padding: 20px 20px;
