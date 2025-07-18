@@ -31,29 +31,22 @@
 </template>
 
 <script>
-// REMOVE THESE IMPORTS - We are no longer using external services for data
-// import topicService from "@/services/TopicService.js";
-// import messageService from "@/services/MessageService.js";
-
-import { mapState, mapActions } from 'vuex'; // Import mapState and mapActions
+import { mapState, mapActions } from 'vuex';
 
 export default {
-  name: "topic-details",
+  name: "topic-details", // This component's name
   props: {
-    // Ensure that topicId is passed as a prop from your router config
-    topicId: [Number, String] // Allow string for route params, convert if needed
+    topicId: [Number, String] // Ensure this prop is being received
   },
   computed: {
-    // Map state properties for direct access in template and script
-    ...mapState(['activeTopic', 'topics']) // Need 'topics' to find the topic by ID
+    ...mapState(['activeTopic', 'topics']) // activeTopic and allTopics from store
   },
   methods: {
-    // Map actions to be dispatched
-    ...mapActions(['selectTopic', 'deleteMessage']), // 'selectTopic' is crucial for initial load
+    ...mapActions(['selectTopic', 'deleteMessage']), // Actions to interact with store
 
     confirmAndDeleteMessage(id) {
+      console.log('Attempting to delete message with ID:', id); // Log for delete action
       if (confirm("Are you sure you want to delete this message?")) {
-        // Dispatch the deleteMessage action from the store
         this.deleteMessage(id);
       }
     }
@@ -64,18 +57,29 @@ export default {
     topicId: {
       immediate: true, // This makes the watcher run immediately when the component is created
       handler(newTopicId) {
-        if (newTopicId && this.topics.length > 0) { // Ensure topics are loaded before searching
+        console.log('--- Watcher: topicId handler initiated ---');
+        console.log('1. Current topicId prop:', newTopicId);
+        console.log('2. Current state.topics (from mapState):', this.topics); // Crucial: Is this populated?
+
+        // Check if newTopicId is valid AND topics array is populated
+        if (newTopicId && this.topics && this.topics.length > 0) {
           const topicToSelect = this.topics.find(t => t.id == newTopicId); // Use == for loose comparison as route param might be string
+          console.log('3. Found topic to select (after find):', topicToSelect);
 
           if (topicToSelect) {
-            // Dispatch the selectTopic action, which will update activeTopic and its messages
-            this.selectTopic(topicToSelect);
+            console.log('4. Dispatching selectTopic action with:', topicToSelect);
+            this.selectTopic(topicToSelect); // Dispatch action to set activeTopic
           } else {
-            console.warn(`Topic with ID ${newTopicId} not found in store.`);
-            // Optional: Redirect to a 404 page or home if topic not found
-            // this.$router.push("/not-found");
+            console.warn(`5. Topic with ID ${newTopicId} NOT found in store's topics array.`);
+            // This is where your "Topic not found" message logic originates
           }
+        } else if (newTopicId && (!this.topics || this.topics.length === 0)) {
+          console.warn(`6. topicId (${newTopicId}) is present, but state.topics is empty or not yet loaded.`);
+          console.warn('   This indicates either an empty store or a timing issue.');
+        } else {
+          console.log('7. topicId is null or undefined on initial load, or topics is empty and topicId is null.');
         }
+        console.log('--- Watcher: topicId handler finished ---');
       }
     },
     // Add a watcher for 'topics' state as well. This handles cases where 'topics' might
@@ -83,15 +87,53 @@ export default {
     topics: {
       immediate: true,
       handler(newTopics) {
-        if (newTopics.length > 0 && this.topicId) {
+        console.log('--- Watcher: topics handler initiated ---');
+        console.log('8. topics array updated:', newTopics); // Crucial: What does this array contain?
+        console.log('9. Current topicId prop:', this.topicId);
+
+        if (newTopics && newTopics.length > 0 && this.topicId) {
           const topicToSelect = newTopics.find(t => t.id == this.topicId);
+          console.log('10. Found topic to select (from topics watcher):', topicToSelect);
+
           // Only select if it's a different topic than currently active to avoid unnecessary re-renders
-          if (topicToSelect && this.activeTopic.id !== topicToSelect.id) {
-             this.selectTopic(topicToSelect);
+          if (topicToSelect && (!this.activeTopic || this.activeTopic.id !== topicToSelect.id)) {
+            console.log('11. Dispatching selectTopic from topics watcher with:', topicToSelect);
+            this.selectTopic(topicToSelect);
+          } else if (!topicToSelect) {
+             console.warn(`12. In topics watcher: Topic with ID ${this.topicId} NOT found in newly updated topics array.`);
+          } else {
+             console.log('13. Topics watcher: Topic already active or no change needed.');
           }
+        } else {
+            console.log('14. Topics watcher: New topics array is empty, or topicId is missing.');
         }
+        console.log('--- Watcher: topics handler finished ---');
       }
+    },
+    // Add a watcher for activeTopic to see when it changes
+    activeTopic: {
+      handler(newActiveTopic) {
+        console.log('--- Watcher: activeTopic handler initiated ---');
+        console.log('15. activeTopic updated to:', newActiveTopic);
+        console.log('--- Watcher: activeTopic handler finished ---');
+      },
+      deep: true // Watch for changes inside the object
     }
+  },
+  created() {
+    console.log('--- Component Created Hook ---');
+    console.log('16. Messages (TopicDetails) component created.');
+    console.log('17. Initial topicId prop:', this.topicId);
+    console.log('18. Initial state.topics at created:', this.topics);
+    console.log('19. Initial state.activeTopic at created:', this.activeTopic);
+    console.log('--- Created Hook Finished ---');
+  },
+  mounted() {
+    console.log('--- Component Mounted Hook ---');
+    console.log('20. Messages (TopicDetails) component mounted.');
+    console.log('21. State.topics at mounted:', this.topics);
+    console.log('22. ActiveTopic at mounted:', this.activeTopic);
+    console.log('--- Mounted Hook Finished ---');
   }
 };
 </script>
