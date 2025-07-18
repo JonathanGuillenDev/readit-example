@@ -11,7 +11,7 @@ export default new Vuex.Store({
   state: {
     // Initialize topics with the data from readit.json
     topics: initialData.topics || [],
-    messages: initialData.messages || [],
+    allMessages: initialData.messages || [],
     // Use || [] to ensure it's an array even if topics is missing in JSON
     // You might also want to initialize activeTopic and activeMessage based on initialData if desired
     // For now, we'll keep them as they were, assuming they'll be set dynamically later.
@@ -31,31 +31,51 @@ export default new Vuex.Store({
     SET_TOPICS(state, data) {
       state.topics = data;
     },
-    SET_ACTIVE_TOPIC(state, data) {
-      state.activeTopic = data;
+    SET_ACTIVE_TOPIC(state, topic) {
+      const messagesForThisTopic = state.allMessages.filter(
+        message => message.topicId === topic.id
+      );
+
+      // Set the active topic and its associated messages
+      state.activeTopic = {
+        id: topic.id,
+        title: topic.title,
+        messages: messagesForThisTopic // Assign the filtered messages here!
+      };
     },
     DELETE_MESSAGE(state, id) {
-      // You'll need to update this logic if messages are directly tied to activeTopic's messages array
-      // based on initial data structure.
-      state.activeTopic.messages.splice(
-        state.activeTopic.messages.findIndex(message => message.id === id),
-        1
-      )
+      // First, remove the message from the global list of all messages
+     state.allMessages = state.allMessages.filter(message => message.id !== id);
+
+      // Then, update the messages within the currently active topic
+      // (This ensures consistency if the deleted message was part of the active topic)
+      if (state.activeTopic && state.activeTopic.messages) {
+        state.activeTopic.messages = state.activeTopic.messages.filter(message => message.id !== id);
+      }
     },
-    SET_ACTIVE_MESSAGE(state, data) {
-      state.activeMessage = data;
+    SET_ACTIVE_MESSAGE(state, newMessage) {
+      // Add the new message to the global list
+      state.allMessages.push(newMessage);
+      // If the new message belongs to the current active topic, also add it there
+      if (state.activeTopic.id === newMessage.topicId) {
+        state.activeTopic.messages.push(newMessage);
+      }
     },
   },
   actions: {
-    // You might still want an action to set the initial data,
-    // especially if you want to perform other operations after loading.
-    // However, for simply populating the state, direct initialization is sufficient.
-    initializeStore({ commit }) {
-      // If you want to use the mutation for setting topics (e.g., if there's more complex logic)
-      // commit('SET_TOPICS', initialData.topics);
-
-      // You might also want to set an initial active topic or message here if needed
-      // commit('SET_ACTIVE_TOPIC', initialData.topics[0]); // Example: set first topic as active
+    // *** NEW: Action to handle selecting a topic ***
+    selectTopic({ commit }, topic) {
+      commit('SET_ACTIVE_TOPIC', topic);
+    },
+    // Example action for deleting a message (call this from components)
+    deleteMessage({ commit }, messageId) {
+      commit('DELETE_MESSAGE', messageId);
+    },
+    // Example action for adding a message (call this from components)
+    addMessage({ commit }, message) {
+      // You'll likely generate ID and topicId here or pass them in from the component
+      // For example: message.id = Date.now();
+      commit('ADD_MESSAGE', message);
     }
   },
   modules: {
