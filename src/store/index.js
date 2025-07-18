@@ -12,9 +12,6 @@ export default new Vuex.Store({
     // Initialize topics with the data from readit.json
     topics: initialData.topics || [],
     allMessages: initialData.messages || [],
-    // Use || [] to ensure it's an array even if topics is missing in JSON
-    // You might also want to initialize activeTopic and activeMessage based on initialData if desired
-    // For now, we'll keep them as they were, assuming they'll be set dynamically later.
     activeTopic: {
       id: 0,
       title: '',
@@ -40,7 +37,7 @@ export default new Vuex.Store({
       state.activeTopic = {
         id: topic.id,
         title: topic.title,
-        messages: messagesForThisTopic // Assign the filtered messages here!
+        messages: messagesForThisTopic
       };
     },
     DELETE_MESSAGE(state, id) {
@@ -53,7 +50,10 @@ export default new Vuex.Store({
         state.activeTopic.messages = state.activeTopic.messages.filter(message => message.id !== id);
       }
     },
-    SET_ACTIVE_MESSAGE(state, newMessage) {
+    // IMPORTANT: SET_ACTIVE_MESSAGE usually sets a specific message for editing/viewing.
+    // If you intend for this mutation to *add* a new message, you should rename it to something like ADD_MESSAGE.
+    // I've renamed it below to ADD_MESSAGE based on its current implementation.
+    ADD_MESSAGE(state, newMessage) { // Renamed from SET_ACTIVE_MESSAGE to clarify intent
       // Add the new message to the global list
       state.allMessages.push(newMessage);
       // If the new message belongs to the current active topic, also add it there
@@ -61,21 +61,37 @@ export default new Vuex.Store({
         state.activeTopic.messages.push(newMessage);
       }
     },
+    // *** NEW: DELETE_TOPIC mutation ***
+    DELETE_TOPIC(state, id) {
+      // Remove the topic from the topics array
+      state.topics = state.topics.filter(topic => topic.id !== id);
+
+      // Also remove all messages associated with this topic from the global allMessages array
+      state.allMessages = state.allMessages.filter(message => message.topicId !== id);
+
+      // If the deleted topic was the active one, clear activeTopic or set a new default
+      if (state.activeTopic.id === id) {
+        state.activeTopic = { id: 0, title: '', messages: [] }; // Clear active topic
+      }
+    }
   },
   actions: {
-    // *** NEW: Action to handle selecting a topic ***
     selectTopic({ commit }, topic) {
       commit('SET_ACTIVE_TOPIC', topic);
     },
-    // Example action for deleting a message (call this from components)
     deleteMessage({ commit }, messageId) {
       commit('DELETE_MESSAGE', messageId);
     },
-    // Example action for adding a message (call this from components)
     addMessage({ commit }, message) {
       // You'll likely generate ID and topicId here or pass them in from the component
-      // For example: message.id = Date.now();
+      // For example: message.id = Date.now(); // Simple ID generation for static data
       commit('ADD_MESSAGE', message);
+    },
+    // *** NEW: deleteTopic action ***
+    deleteTopic({ commit }, topicId) {
+      // For a static JSON setup, the action just commits the mutation.
+      // If you later add a backend, this is where you'd put the API call.
+      commit('DELETE_TOPIC', topicId);
     }
   },
   modules: {
