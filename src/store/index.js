@@ -10,7 +10,9 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   state: {
     // Initialize topics with the data from readit.json
-    topics: initialData.topics || [], // Use || [] to ensure it's an array even if topics is missing in JSON
+    topics: initialData.topics || [],
+    messages: initialData.messages || [],
+    // Use || [] to ensure it's an array even if topics is missing in JSON
     // You might also want to initialize activeTopic and activeMessage based on initialData if desired
     // For now, we'll keep them as they were, assuming they'll be set dynamically later.
     activeTopic: {
